@@ -12,7 +12,7 @@ spring:
                 allowedHeaders: "*"
                 allowCredentials: true
 server: { port: 8080 }
-eureka: { client: { serviceUrl: { defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/} } } }
+eureka: { client: { serviceUrl: { defaultZone: "${EUREKA_URL:http://localhost:8761/eureka/}" } } }
 management: { endpoints: { web: { exposure: { include: health,info,metrics } } } }
 dpdms:
   jwt-secret: ${JWT_SECRET:dpdms-demo-jwt-secret-key-must-be-at-least-32-bytes-long}

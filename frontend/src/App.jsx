@@ -1,71 +1,1891 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
+const API_BASE =
+  import.meta.env.VITE_API_BASE || 'http://localhost:8080/api/v1';
+
+/* =========================================================
+   HAZARD CONFIGURATION
+   ========================================================= */
+
 const hazards = [
-  ['FLOOD','Flood','floods', [['peakWaterLevelMetres','Peak water level (m)','number'],['riverBasin','River basin','text'],['householdsDisplaced','Households displaced','number'],['areaFloodedHectares','Area flooded (ha)','number'],['durationDays','Duration (days)','number']]],
-  ['DROUGHT','Drought','droughts', [['rainfallDeficitMm','Rainfall deficit (mm)','number'],['consecutiveDryDays','Consecutive dry days','number'],['cropFailurePercentage','Crop failure (%)','number'],['peopleFacingWaterShortages','People facing water shortages','number'],['livestockMortalityCount','Livestock mortality count','number']]],
-  ['FIRE','Fire','fires', [['areaBurnedHectares','Area burned (ha)','number'],['suspectedCause','Suspected cause','text'],['injuriesFatalities','Injuries/fatalities','number'],['structuresDestroyed','Structures destroyed','number'],['active','Still active','checkbox']]],
-  ['ZOONOTIC','Zoonotic disease','zoonotic', [['pathogenName','Pathogen/disease','text'],['animalSpecies','Animal species','text'],['confirmedHumanCases','Confirmed human cases','number'],['confirmedAnimalCases','Confirmed animal cases','number'],['eventClassification','Classification (CLUSTER/OUTBREAK)','text']]],
-  ['MINING','Mining accident','mining-accidents', [['mineName','Mine name','text'],['mineType','Mine type','text'],['accidentType','Accident type','text'],['trappedOrInjuredMiners','Trapped/injured miners','number'],['fatalities','Fatalities','number'],['rescueOngoing','Rescue ongoing','checkbox']]]
+  [
+    'FLOOD',
+    'Flood',
+    'floods',
+    [
+      {
+        key: 'peakWaterLevelMetres',
+        label: 'Peak water level (m)',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'riverBasin',
+        label: 'River basin',
+        type: 'text'
+      },
+      {
+        key: 'householdsDisplaced',
+        label: 'Households displaced',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'areaFloodedHectares',
+        label: 'Area flooded (ha)',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'durationDays',
+        label: 'Duration (days)',
+        type: 'number',
+        min: 0
+      }
+    ]
+  ],
+
+  [
+    'DROUGHT',
+    'Drought',
+    'droughts',
+    [
+      {
+        key: 'rainfallDeficitMm',
+        label: 'Rainfall deficit (mm)',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'consecutiveDryDays',
+        label: 'Consecutive dry days',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'cropFailurePercentage',
+        label: 'Crop failure (%)',
+        type: 'number',
+        min: 0,
+        max: 100
+      },
+      {
+        key: 'peopleFacingWaterShortages',
+        label: 'People facing water shortages',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'livestockMortalityCount',
+        label: 'Livestock mortality count',
+        type: 'number',
+        min: 0
+      }
+    ]
+  ],
+
+  [
+    'FIRE',
+    'Fire',
+    'fires',
+    [
+      {
+        key: 'areaBurnedHectares',
+        label: 'Area burned (ha)',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'suspectedCause',
+        label: 'Suspected cause',
+        type: 'text'
+      },
+      {
+        key: 'injuriesFatalities',
+        label: 'Injuries/fatalities',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'structuresDestroyed',
+        label: 'Structures destroyed',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'active',
+        label: 'Still active',
+        type: 'checkbox'
+      }
+    ]
+  ],
+
+  [
+    'ZOONOTIC',
+    'Zoonotic disease',
+    'zoonotic',
+    [
+      {
+        key: 'pathogenName',
+        label: 'Pathogen/disease',
+        type: 'text'
+      },
+      {
+        key: 'animalSpecies',
+        label: 'Animal species',
+        type: 'text'
+      },
+      {
+        key: 'confirmedHumanCases',
+        label: 'Confirmed human cases',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'confirmedAnimalCases',
+        label: 'Confirmed animal cases',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'eventClassification',
+        label: 'Classification (CLUSTER/OUTBREAK)',
+        type: 'text'
+      }
+    ]
+  ],
+
+  [
+    'MINING',
+    'Mining accident',
+    'mining-accidents',
+    [
+      {
+        key: 'mineName',
+        label: 'Mine name',
+        type: 'text'
+      },
+      {
+        key: 'mineType',
+        label: 'Mine type',
+        type: 'text'
+      },
+      {
+        key: 'accidentType',
+        label: 'Accident type',
+        type: 'text'
+      },
+      {
+        key: 'trappedOrInjuredMiners',
+        label: 'Trapped/injured miners',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'fatalities',
+        label: 'Fatalities',
+        type: 'number',
+        min: 0
+      },
+      {
+        key: 'rescueOngoing',
+        label: 'Rescue ongoing',
+        type: 'checkbox'
+      }
+    ]
+  ]
 ];
 
-async function api(path, options={}){
-  const token=localStorage.getItem('dpdms_token');
-  const headers=new Headers(options.headers||{});
-  if(token) headers.set('Authorization',`Bearer ${token}`);
-  if(options.body && !(options.body instanceof Blob)) headers.set('Content-Type','application/json');
-  const r=await fetch(`${API_BASE}${path}`,{...options,headers});
-  if(!r.ok){let msg=`HTTP ${r.status}`;try{const j=await r.json();msg=j.message||j.error||msg;}catch{}throw new Error(msg);}
-  return r;
+/* =========================================================
+   API HELPER
+   ========================================================= */
+
+async function api(path, options = {}) {
+  const token = localStorage.getItem('dpdms_token');
+
+  const headers = new Headers(options.headers || {});
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  if (options.body && !(options.body instanceof Blob)) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers
+  });
+
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+
+    try {
+      const json = await response.json();
+
+      message =
+        json.message ||
+        json.error ||
+        json.detail ||
+        message;
+    } catch {}
+
+    throw new Error(message);
+  }
+
+  return response;
 }
 
-function Login({onLoggedIn}){
-  const [username,setUsername]=useState('flood.recorder');const [password,setPassword]=useState('Password123!');const [error,setError]=useState('');const [busy,setBusy]=useState(false);
-  async function login(e){e.preventDefault();setBusy(true);setError('');try{const r=await fetch(`${API_BASE}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});const j=await r.json();if(!r.ok)throw new Error(j.message||'Login failed');localStorage.setItem('dpdms_token',j.token);localStorage.setItem('dpdms_user',JSON.stringify(j));onLoggedIn(j);}catch(err){setError(err.message)}finally{setBusy(false)}}
-  return <div className="login"><div className="login-card"><h1>DPDMS</h1><p>Rushinga Provincial Disaster Monitoring and Management System</p><form onSubmit={login}><label>Username<input value={username} onChange={e=>setUsername(e.target.value)}/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="error">{error}</div>}<button disabled={busy}>{busy?'Signing in…':'Sign in'}</button></form><small>Demo password: Password123!</small></div></div>;
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+function Login({ onLoggedIn }) {
+  const [username, setUsername] = useState('flood.recorder');
+  const [password, setPassword] = useState('Password123!');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function login(e) {
+    e.preventDefault();
+
+    setBusy(true);
+    setError('');
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/auth/login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username,
+            password
+          })
+        }
+      );
+
+      const json = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          json.message || 'Login failed'
+        );
+      }
+
+      localStorage.setItem(
+        'dpdms_token',
+        json.token
+      );
+
+      localStorage.setItem(
+        'dpdms_user',
+        JSON.stringify(json)
+      );
+
+      onLoggedIn(json);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="login">
+      <div className="login-card">
+        <h1>DPDMS</h1>
+
+        <p>
+          Rushinga Provincial Disaster Monitoring and Management System
+        </p>
+
+        <form onSubmit={login}>
+          <label>
+            Username
+            <input
+              value={username}
+              onChange={e =>
+                setUsername(e.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={e =>
+                setPassword(e.target.value)
+              }
+            />
+          </label>
+
+          {error && (
+            <div className="error">
+              {error}
+            </div>
+          )}
+
+          <button disabled={busy}>
+            {busy
+              ? 'Signing in...'
+              : 'Sign in'}
+          </button>
+        </form>
+
+        <small>
+          Demo password: Password123!
+        </small>
+      </div>
+    </div>
+  );
 }
 
-function MapView({incidents=[]}){
-  const ref=useRef(null);useEffect(()=>{if(!ref.current)return;const map=L.map(ref.current).setView([-16.65,31.43],10);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(map);incidents.forEach(i=>{const lat=Number(i.latitude),lng=Number(i.longitude);if(Number.isFinite(lat)&&Number.isFinite(lng))L.circleMarker([lat,lng],{radius:7}).addTo(map).bindPopup(`<strong>${i.hazard}</strong><br/>${i.ward||''}<br/>Severity: ${i.severity||''}<br/>${i.occurrenceAt||''}`);});return()=>map.remove();},[incidents]);return <div className="map" ref={ref}/>;
+/* =========================================================
+   MAP
+   ========================================================= */
+
+function MapView({ incidents = [] }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+
+    const map =
+      L.map(ref.current)
+        .setView(
+          [-16.65, 31.43],
+          10
+        );
+
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        attribution:
+          '© OpenStreetMap contributors'
+      }
+    ).addTo(map);
+
+    incidents.forEach(incident => {
+      const latitude =
+        Number(incident.latitude);
+
+      const longitude =
+        Number(incident.longitude);
+
+      if (
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude)
+      ) {
+        L.circleMarker(
+          [latitude, longitude],
+          {
+            radius: 7
+          }
+        )
+          .addTo(map)
+          .bindPopup(
+            `<strong>${incident.hazard || ''}</strong><br/>` +
+              `${incident.ward || ''}<br/>` +
+              `Severity: ${incident.severity || ''}<br/>` +
+              `${incident.occurrenceAt || ''}`
+          );
+      }
+    });
+
+    return () => {
+      map.remove();
+    };
+  }, [incidents]);
+
+  return (
+    <div
+      className="map"
+      ref={ref}
+    />
+  );
 }
 
-function Dashboard({summary,onRefresh}){
-  if(!summary)return <div className="loading">Loading dashboard…</div>;
-  return <div><div className="section-head"><div><h2>Live dashboard</h2><p>Approved incidents only. Last refresh: {summary.lastRefresh||'—'}</p></div><button onClick={onRefresh}>Refresh</button></div><div className="cards"><div className="card"><span>Total approved</span><strong>{summary.totalApproved}</strong></div>{Object.entries(summary.countsByHazard||{}).map(([k,v])=><div className="card" key={k}><span>{k}</span><strong>{v}</strong></div>)}</div><div className="two-col"><div className="panel"><h3>Severity</h3>{Object.entries(summary.countsBySeverity||{}).map(([k,v])=><div className="bar-row" key={k}><span>{k}</span><b style={{width:`${Math.min(100,v*15+10)}%`}}>{v}</b></div>)}</div><div className="panel"><h3>Trend</h3>{Object.entries(summary.trend||{}).map(([k,v])=><div className="trend-row" key={k}><span>{k}</span><b>{v}</b></div>)}</div></div><div className="panel"><h3>Incident map</h3><MapView incidents={summary.mapIncidents||[]}/></div><div className="panel"><h3>Recent incidents</h3><Table rows={summary.recentIncidents||[]}/></div></div>;
+/* =========================================================
+   DASHBOARD
+   ========================================================= */
+
+function Dashboard({
+  summary,
+  onRefresh
+}) {
+  if (!summary) {
+    return (
+      <div className="loading">
+        Loading dashboard...
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="section-head">
+        <div>
+          <h2>
+            Live dashboard
+          </h2>
+
+          <p>
+            Approved incidents only.
+            Last refresh:{' '}
+            {summary.lastRefresh || '—'}
+          </p>
+        </div>
+
+        <button
+          onClick={onRefresh}
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div className="cards">
+        <div className="card">
+          <span>
+            Total approved
+          </span>
+
+          <strong>
+            {summary.totalApproved}
+          </strong>
+        </div>
+
+        {Object.entries(
+          summary.countsByHazard || {}
+        ).map(
+          ([hazard, count]) => (
+            <div
+              className="card"
+              key={hazard}
+            >
+              <span>
+                {hazard}
+              </span>
+
+              <strong>
+                {count}
+              </strong>
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="two-col">
+        <div className="panel">
+          <h3>
+            Severity
+          </h3>
+
+          {Object.entries(
+            summary.countsBySeverity || {}
+          ).map(
+            ([severity, count]) => (
+              <div
+                className="bar-row"
+                key={severity}
+              >
+                <span>
+                  {severity}
+                </span>
+
+                <b
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      count * 15 + 10
+                    )}%`
+                  }}
+                >
+                  {count}
+                </b>
+              </div>
+            )
+          )}
+        </div>
+
+        <div className="panel">
+          <h3>
+            Trend
+          </h3>
+
+          {Object.entries(
+            summary.trend || {}
+          ).map(
+            ([date, count]) => (
+              <div
+                className="trend-row"
+                key={date}
+              >
+                <span>
+                  {date}
+                </span>
+
+                <b>
+                  {count}
+                </b>
+              </div>
+            )
+          )}
+        </div>
+      </div>
+
+      <div className="panel">
+        <h3>
+          Incident map
+        </h3>
+
+        <MapView
+          incidents={
+            summary.mapIncidents || []
+          }
+        />
+      </div>
+
+      <div className="panel">
+        <h3>
+          Recent incidents
+        </h3>
+
+        <Table
+          rows={
+            summary.recentIncidents || []
+          }
+        />
+      </div>
+    </div>
+  );
 }
 
-function Table({rows}){return <div className="table-wrap"><table><thead><tr><th>Hazard</th><th>Ward</th><th>District</th><th>Severity</th><th>Status</th><th>Date</th></tr></thead><tbody>{rows.map((r,i)=><tr key={r.id||i}><td>{r.hazard}</td><td>{r.ward}</td><td>{r.district}</td><td>{r.severity}</td><td>{r.status||'APPROVED'}</td><td>{r.occurrenceAt}</td></tr>)}</tbody></table></div>}
+/* =========================================================
+   TABLE
+   ========================================================= */
 
-function Incidents({user}){
-  const [hazard,setHazard]=useState(user.hazard==='ALL'?'FLOOD':user.hazard);const [rows,setRows]=useState([]);const [error,setError]=useState('');const cfg=hazards.find(h=>h[0]===hazard)||hazards[0];
-  async function load(){setError('');try{const r=await api(`/${cfg[2]}`);setRows(await r.json());}catch(e){setRows([]);setError(e.message)}}useEffect(()=>{load()},[hazard]);
-  const canApprove=user.role.endsWith('_SUPERVISOR')||user.role==='PROVINCIAL_ADMIN';
-  async function action(id,type){try{if(type==='approve')await api(`/${cfg[2]}/${id}/approve`,{method:'POST'});else{const reason=prompt('Reason:');if(!reason)return;await api(`/${cfg[2]}/${id}/${type==='reject'?'reject':'corrections'}?reason=${encodeURIComponent(reason)}`,{method:'POST'});}load();}catch(e){alert(e.message)}}
-  return <div><div className="section-head"><div><h2>Incidents</h2><p>Backend scoping is enforced per role and hazard.</p></div><select value={hazard} onChange={e=>setHazard(e.target.value)} disabled={user.hazard!=='ALL'}>{hazards.map(h=><option key={h[0]} value={h[0]}>{h[1]}</option>)}</select></div>{error&&<div className="error">{error}</div>}<div className="table-wrap"><table><thead><tr><th>ID</th><th>Ward</th><th>Severity</th><th>Status</th><th>Reporter</th><th>Actions</th></tr></thead><tbody>{rows.map(r=><tr key={r.id}><td>{r.id}</td><td>{r.ward}</td><td>{r.severity}</td><td>{r.status}</td><td>{r.reporter}</td><td>{canApprove&&r.status!=='APPROVED'?<div className="actions"><button onClick={()=>action(r.id,'approve')}>Approve</button><button onClick={()=>action(r.id,'reject')}>Reject</button><button onClick={()=>action(r.id,'corrections')}>Corrections</button></div>:user.role==='NATIONAL_USER'?'Read only':'—'}</td></tr>)}</tbody></table></div></div>;
+function Table({ rows }) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Hazard</th>
+            <th>Ward</th>
+            <th>District</th>
+            <th>Severity</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {rows.map(
+            (row, index) => (
+              <tr
+                key={
+                  row.id ||
+                  index
+                }
+              >
+                <td>
+                  {row.hazard}
+                </td>
+
+                <td>
+                  {row.ward}
+                </td>
+
+                <td>
+                  {row.district}
+                </td>
+
+                <td>
+                  {row.severity}
+                </td>
+
+                <td>
+                  {row.status ||
+                    'APPROVED'}
+                </td>
+
+                <td>
+                  {row.occurrenceAt}
+                </td>
+              </tr>
+            )
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
-function Capture({user}){
-  const cfg=hazards.find(h=>h[0]===user.hazard);const [common,setCommon]=useState({occurrenceAt:new Date().toISOString().slice(0,16),severity:'MEDIUM',latitude:'-16.65',longitude:'31.43'});const [specific,setSpecific]=useState({});const [msg,setMsg]=useState('');
-  if(!cfg)return <div className="panel">National/admin users should select a hazard under Incidents to test that service.</div>;
-  function setC(k,v){setCommon({...common,[k]:v})}function setS(k,v){setSpecific({...specific,[k]:v})}
-  async function save(e){e.preventDefault();setMsg('');const body={...common,...specific,occurrenceAt:common.occurrenceAt};for(const x of cfg[3])if(x[2]==='number'&&body[x[0]]!=='')body[x[0]]=Number(body[x[0]]);for(const x of cfg[3])if(x[2]==='checkbox')body[x[0]]=Boolean(body[x[0]]);try{await api(`/${cfg[2]}`,{method:'POST',body:JSON.stringify(body)});setMsg('Incident captured and placed in PENDING status.');setSpecific({});}catch(e){setMsg(e.message)}}
-  return <form onSubmit={save}><h2>Capture {cfg[1]} incident</h2><div className="form-grid"><label>Occurrence date/time<input type="datetime-local" value={common.occurrenceAt} onChange={e=>setC('occurrenceAt',e.target.value)}/></label><label>Severity<select value={common.severity} onChange={e=>setC('severity',e.target.value)}><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label><label>Latitude<input type="number" step="any" value={common.latitude} onChange={e=>setC('latitude',e.target.value)}/></label><label>Longitude<input type="number" step="any" value={common.longitude} onChange={e=>setC('longitude',e.target.value)}/></label>{cfg[3].map(([k,label,type])=><label key={k}>{label}{type==='checkbox'?<input type="checkbox" checked={Boolean(specific[k])} onChange={e=>setS(k,e.target.checked)}/>:<input type={type} value={specific[k]??''} onChange={e=>setS(k,e.target.value)}/>}</label>)}</div>{msg&&<div className="notice">{msg}</div>}<button type="submit">Submit incident</button></form>;
+/* =========================================================
+   INCIDENTS
+   ========================================================= */
+
+function Incidents({ user }) {
+  const [hazard, setHazard] =
+    useState(
+      user.hazard === 'ALL'
+        ? 'FLOOD'
+        : user.hazard
+    );
+
+  const [rows, setRows] =
+    useState([]);
+
+  const [error, setError] =
+    useState('');
+
+  const config =
+    hazards.find(
+      hazardConfig =>
+        hazardConfig[0] === hazard
+    ) || hazards[0];
+
+  async function load() {
+    setError('');
+
+    try {
+      const response =
+        await api(
+          `/${config[2]}`
+        );
+
+      setRows(
+        await response.json()
+      );
+    } catch (e) {
+      setRows([]);
+      setError(e.message);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, [hazard]);
+
+  const canApprove =
+    user.role.endsWith(
+      '_SUPERVISOR'
+    ) ||
+    user.role ===
+      'PROVINCIAL_ADMIN';
+
+  /* =========================================================
+     APPROVE / REJECT / REQUEST CORRECTIONS
+     =========================================================
+
+     All five backend services use:
+
+     POST /{id}/approve
+
+     POST /{id}/reject?reason=...
+
+     POST /{id}/corrections?reason=...
+     */
+
+  async function action(id, type) {
+    try {
+      let endpoint = '';
+
+      if (type === 'approve') {
+        endpoint =
+          `/${config[2]}/${id}/approve`;
+      } else {
+        const reason =
+          prompt(
+            type === 'reject'
+              ? 'Reason for rejection:'
+              : 'Reason for requesting corrections:'
+          );
+
+        if (
+          reason === null ||
+          reason.trim() === ''
+        ) {
+          return;
+        }
+
+        const encodedReason =
+          encodeURIComponent(
+            reason.trim()
+          );
+
+        if (type === 'reject') {
+          endpoint =
+            `/${config[2]}/${id}/reject?reason=${encodedReason}`;
+        } else if (
+          type === 'corrections'
+        ) {
+          endpoint =
+            `/${config[2]}/${id}/corrections?reason=${encodedReason}`;
+        } else {
+          throw new Error(
+            'Unknown incident action.'
+          );
+        }
+      }
+
+      await api(
+        endpoint,
+        {
+          method: 'POST'
+        }
+      );
+
+      await load();
+    } catch (e) {
+      alert(
+        `Action failed: ${e.message}`
+      );
+    }
+  }
+
+  return (
+    <div>
+      <div className="section-head">
+        <div>
+          <h2>
+            Incidents
+          </h2>
+
+          <p>
+            Backend scoping is enforced
+            per role and hazard.
+          </p>
+        </div>
+
+        <select
+          value={hazard}
+          onChange={e =>
+            setHazard(
+              e.target.value
+            )
+          }
+          disabled={
+            user.hazard !== 'ALL'
+          }
+        >
+          {hazards.map(
+            hazardConfig => (
+              <option
+                key={
+                  hazardConfig[0]
+                }
+                value={
+                  hazardConfig[0]
+                }
+              >
+                {
+                  hazardConfig[1]
+                }
+              </option>
+            )
+          )}
+        </select>
+      </div>
+
+      {error && (
+        <div className="error">
+          {error}
+        </div>
+      )}
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>
+                ID
+              </th>
+
+              <th>
+                Ward
+              </th>
+
+              <th>
+                Severity
+              </th>
+
+              <th>
+                Status
+              </th>
+
+              <th>
+                Reporter
+              </th>
+
+              <th>
+                Actions
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map(
+              row => (
+                <tr
+                  key={
+                    row.id
+                  }
+                >
+                  <td>
+                    {row.id}
+                  </td>
+
+                  <td>
+                    {row.ward}
+                  </td>
+
+                  <td>
+                    {row.severity}
+                  </td>
+
+                  <td>
+                    {row.status}
+                  </td>
+
+                  <td>
+                    {row.reporter}
+                  </td>
+
+                  <td>
+                    {canApprove &&
+                    row.status !==
+                      'APPROVED' ? (
+                      <div className="actions">
+                        <button
+                          onClick={() =>
+                            action(
+                              row.id,
+                              'approve'
+                            )
+                          }
+                        >
+                          Approve
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            action(
+                              row.id,
+                              'reject'
+                            )
+                          }
+                        >
+                          Reject
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            action(
+                              row.id,
+                              'corrections'
+                            )
+                          }
+                        >
+                          Corrections
+                        </button>
+                      </div>
+                    ) : user.role ===
+                      'NATIONAL_USER' ? (
+                      'Read only'
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
-function Reports({user}){
-  const [hazard,setHazard]=useState('ALL');const [format,setFormat]=useState('PDF');const [busy,setBusy]=useState(false);
-  async function download(){setBusy(true);try{const r=await api(`/reports?hazard=${hazard}&format=${format}&approvalStatus=APPROVED`);const blob=await r.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`dpdms-report.${format.toLowerCase()}`;a.click();URL.revokeObjectURL(url);}catch(e){alert(e.message)}finally{setBusy(false)}}
-  return <div><h2>Reports</h2><p>Reports contain approved incidents only and remain subject to backend hazard/ward scope.</p><div className="form-grid"><label>Hazard<select value={hazard} onChange={e=>setHazard(e.target.value)}><option>ALL</option>{hazards.map(h=><option key={h[0]}>{h[0]}</option>)}</select></label><label>Format<select value={format} onChange={e=>setFormat(e.target.value)}><option>PDF</option><option>DOCX</option><option>XLSX</option><option>CSV</option></select></label></div><button onClick={download} disabled={busy}>{busy?'Generating…':'Download report'}</button></div>;
+/* =========================================================
+   CAPTURE
+   ========================================================= */
+
+function Capture({ user }) {
+  const config =
+    hazards.find(
+      hazardConfig =>
+        hazardConfig[0] ===
+        user.hazard
+    );
+
+  const [common, setCommon] =
+    useState({
+      occurrenceAt:
+        new Date()
+          .toISOString()
+          .slice(0, 16),
+
+      severity:
+        'MEDIUM',
+
+      latitude:
+        '-16.65',
+
+      longitude:
+        '31.43'
+    });
+
+  const [specific, setSpecific] =
+    useState({});
+
+  const [msg, setMsg] =
+    useState('');
+
+  const [msgType, setMsgType] =
+    useState('');
+
+  if (!config) {
+    return (
+      <div className="panel">
+        <h2>
+          Capture Incident
+        </h2>
+
+        <p>
+          National and provincial
+          admin users should select
+          a hazard under Incidents
+          to test that service.
+        </p>
+      </div>
+    );
+  }
+
+  function setCommonValue(
+    key,
+    value
+  ) {
+    setCommon({
+      ...common,
+      [key]: value
+    });
+  }
+
+  function setSpecificValue(
+    key,
+    value
+  ) {
+    setSpecific({
+      ...specific,
+      [key]: value
+    });
+  }
+
+  /* =======================================================
+     FRONTEND VALIDATION
+     ======================================================= */
+
+  function validateForm() {
+    const errors = [];
+
+    if (!user.ward?.trim()) {
+      errors.push(
+        'Ward is missing from your user account.'
+      );
+    }
+
+    if (!user.district?.trim()) {
+      errors.push(
+        'District is missing from your user account.'
+      );
+    }
+
+    if (!user.province?.trim()) {
+      errors.push(
+        'Province is missing from your user account.'
+      );
+    }
+
+    if (!user.username?.trim()) {
+      errors.push(
+        'Reporter username is missing from your user account.'
+      );
+    }
+
+    if (!common.occurrenceAt?.trim()) {
+      errors.push(
+        'Occurrence date/time is required.'
+      );
+    }
+
+    if (!common.severity?.trim()) {
+      errors.push(
+        'Severity is required.'
+      );
+    }
+
+    const latitude =
+      Number(common.latitude);
+
+    if (
+      common.latitude === '' ||
+      !Number.isFinite(latitude)
+    ) {
+      errors.push(
+        'Latitude is required.'
+      );
+    } else if (
+      latitude < -90 ||
+      latitude > 90
+    ) {
+      errors.push(
+        'Latitude must be between -90 and 90.'
+      );
+    }
+
+    const longitude =
+      Number(common.longitude);
+
+    if (
+      common.longitude === '' ||
+      !Number.isFinite(longitude)
+    ) {
+      errors.push(
+        'Longitude is required.'
+      );
+    } else if (
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      errors.push(
+        'Longitude must be between -180 and 180.'
+      );
+    }
+
+    config[3].forEach(
+      field => {
+        const value =
+          specific[
+            field.key
+          ];
+
+        if (
+          field.type ===
+          'checkbox'
+        ) {
+          return;
+        }
+
+        if (
+          field.type ===
+          'text'
+        ) {
+          if (
+            value ===
+              undefined ||
+            value ===
+              null ||
+            String(value).trim() ===
+              ''
+          ) {
+            errors.push(
+              `${field.label} is required.`
+            );
+          }
+
+          return;
+        }
+
+        if (
+          field.type ===
+          'number'
+        ) {
+          if (
+            value ===
+              undefined ||
+            value ===
+              null ||
+            value === ''
+          ) {
+            errors.push(
+              `${field.label} is required.`
+            );
+
+            return;
+          }
+
+          const number =
+            Number(value);
+
+          if (
+            !Number.isFinite(
+              number
+            )
+          ) {
+            errors.push(
+              `${field.label} must be a valid number.`
+            );
+
+            return;
+          }
+
+          if (
+            field.min !==
+              undefined &&
+            number <
+              field.min
+          ) {
+            errors.push(
+              `${field.label} cannot be less than ${field.min}.`
+            );
+          }
+
+          if (
+            field.max !==
+              undefined &&
+            number >
+              field.max
+          ) {
+            errors.push(
+              `${field.label} cannot be greater than ${field.max}.`
+            );
+          }
+        }
+      }
+    );
+
+    return errors;
+  }
+
+  /* =======================================================
+     SAVE INCIDENT
+     ======================================================= */
+
+  async function save(e) {
+    e.preventDefault();
+
+    setMsg('');
+    setMsgType('');
+
+    const errors =
+      validateForm();
+
+    if (
+      errors.length > 0
+    ) {
+      setMsg(
+        errors.join(' ')
+      );
+
+      setMsgType(
+        'error'
+      );
+
+      return;
+    }
+
+    /*
+    Complete request body.
+
+    Shared fields come automatically from the authenticated
+    account rather than being manually entered by the user.
+    */
+
+    const body = {
+      ...common,
+      ...specific,
+
+      occurrenceAt:
+        common.occurrenceAt,
+
+      ward:
+        user.ward,
+
+      district:
+        user.district,
+
+      province:
+        user.province,
+
+      reporter:
+        user.username
+    };
+
+    /*
+    Convert number and checkbox fields.
+    */
+
+    config[3].forEach(
+      field => {
+        if (
+          field.type ===
+          'number'
+        ) {
+          body[field.key] =
+            Number(
+              body[field.key]
+            );
+        }
+
+        if (
+          field.type ===
+          'checkbox'
+        ) {
+          body[field.key] =
+            Boolean(
+              body[field.key]
+            );
+        }
+
+        if (
+          field.type ===
+          'text'
+        ) {
+          body[field.key] =
+            String(
+              body[field.key]
+            ).trim();
+        }
+      }
+    );
+
+    try {
+      await api(
+        `/${config[2]}`,
+        {
+          method:
+            'POST',
+          body:
+            JSON.stringify(
+              body
+            )
+        }
+      );
+
+      setMsg(
+        'Incident captured successfully and placed in PENDING status.'
+      );
+
+      setMsgType(
+        'success'
+      );
+
+      setSpecific(
+        {}
+      );
+    } catch (e) {
+      setMsg(
+        `The incident could not be submitted: ${e.message}`
+      );
+
+      setMsgType(
+        'error'
+      );
+    }
+  }
+
+  return (
+    <form
+      onSubmit={save}
+    >
+      <h2>
+        Capture {config[1]} incident
+      </h2>
+
+      {/* ===================================================
+          LOCATION
+          =================================================== */}
+
+      <div className="location-panel">
+        <h3>
+          Incident location
+        </h3>
+
+        <div className="location-grid">
+          <div className="location-item">
+            <span>
+              Ward
+            </span>
+
+            <strong>
+              {user.ward ||
+                'Not assigned'}
+            </strong>
+          </div>
+
+          <div className="location-item">
+            <span>
+              District
+            </span>
+
+            <strong>
+              {user.district ||
+                'Not assigned'}
+            </strong>
+          </div>
+
+          <div className="location-item">
+            <span>
+              Province
+            </span>
+
+            <strong>
+              {user.province ||
+                'Not assigned'}
+            </strong>
+          </div>
+
+          <div className="location-item">
+            <span>
+              Reporter
+            </span>
+
+            <strong>
+              {user.username ||
+                'Not assigned'}
+            </strong>
+          </div>
+        </div>
+
+        <p className="location-note">
+          Ward, district, province and
+          reporter are automatically
+          assigned from your authenticated
+          user account.
+        </p>
+      </div>
+
+      {/* ===================================================
+          COMMON FIELDS
+          =================================================== */}
+
+      <div className="form-grid">
+        <label>
+          Occurrence date/time
+
+          <input
+            type="datetime-local"
+            value={
+              common.occurrenceAt
+            }
+            required
+            onChange={e =>
+              setCommonValue(
+                'occurrenceAt',
+                e.target.value
+              )
+            }
+          />
+        </label>
+
+        <label>
+          Severity
+
+          <select
+            value={
+              common.severity
+            }
+            required
+            onChange={e =>
+              setCommonValue(
+                'severity',
+                e.target.value
+              )
+            }
+          >
+            <option value="">
+              Select severity
+            </option>
+
+            <option value="LOW">
+              LOW
+            </option>
+
+            <option value="MEDIUM">
+              MEDIUM
+            </option>
+
+            <option value="HIGH">
+              HIGH
+            </option>
+
+            <option value="CRITICAL">
+              CRITICAL
+            </option>
+          </select>
+        </label>
+
+        <label>
+          Latitude
+
+          <input
+            type="number"
+            step="any"
+            min="-90"
+            max="90"
+            value={
+              common.latitude
+            }
+            required
+            onChange={e =>
+              setCommonValue(
+                'latitude',
+                e.target.value
+              )
+            }
+          />
+        </label>
+
+        <label>
+          Longitude
+
+          <input
+            type="number"
+            step="any"
+            min="-180"
+            max="180"
+            value={
+              common.longitude
+            }
+            required
+            onChange={e =>
+              setCommonValue(
+                'longitude',
+                e.target.value
+              )
+            }
+          />
+        </label>
+
+        {/* =================================================
+            HAZARD-SPECIFIC FIELDS
+            ================================================= */}
+
+        {config[3].map(
+          field => (
+            <label
+              key={
+                field.key
+              }
+            >
+              {field.label}
+
+              {field.type ===
+              'checkbox' ? (
+                <input
+                  type="checkbox"
+                  checked={Boolean(
+                    specific[
+                      field.key
+                    ]
+                  )}
+                  onChange={e =>
+                    setSpecificValue(
+                      field.key,
+                      e.target.checked
+                    )
+                  }
+                />
+              ) : (
+                <input
+                  type={
+                    field.type
+                  }
+                  value={
+                    specific[
+                      field.key
+                    ] ?? ''
+                  }
+                  min={
+                    field.min
+                  }
+                  max={
+                    field.max
+                  }
+                  required
+                  onChange={e =>
+                    setSpecificValue(
+                      field.key,
+                      e.target.value
+                    )
+                  }
+                />
+              )}
+            </label>
+          )
+        )}
+      </div>
+
+      {msg && (
+        <div
+          className={
+            msgType ===
+            'error'
+              ? 'error'
+              : 'notice'
+          }
+        >
+          {msg}
+        </div>
+      )}
+
+      <button
+        type="submit"
+      >
+        Submit incident
+      </button>
+    </form>
+  );
 }
 
-function App(){
-  const [user,setUser]=useState(()=>JSON.parse(localStorage.getItem('dpdms_user')||'null'));const [tab,setTab]=useState('dashboard');const [summary,setSummary]=useState(null);const [error,setError]=useState('');
-  async function loadSummary(){try{setError('');const r=await api('/dashboard/summary');setSummary(await r.json());}catch(e){setError(e.message)}}
-  useEffect(()=>{if(user)loadSummary();},[user]);
-  if(!user)return <Login onLoggedIn={setUser}/>;
-  function logout(){localStorage.clear();setUser(null);setSummary(null)}
-  return <div className="app"><header><div><strong>DPDMS</strong><span>{user.role} · {user.hazard} {user.ward&&`· ${user.ward}`}</span></div><button className="ghost" onClick={logout}>Sign out</button></header><nav>{[['dashboard','Dashboard'],['incidents','Incidents'],['capture','Capture'],['reports','Reports']].map(x=><button key={x[0]} className={tab===x[0]?'active':''} onClick={()=>setTab(x[0])}>{x[1]}</button>)}</nav><main>{error&&<div className="error">{error}</div>}{tab==='dashboard'&&<Dashboard summary={summary} onRefresh={loadSummary}/>} {tab==='incidents'&&<Incidents user={user}/>} {tab==='capture'&&<Capture user={user}/>} {tab==='reports'&&<Reports user={user}/>}</main></div>
+/* =========================================================
+   REPORTS
+   ========================================================= */
+
+function Reports({ user }) {
+  const [hazard, setHazard] =
+    useState('ALL');
+
+  const [format, setFormat] =
+    useState('PDF');
+
+  const [busy, setBusy] =
+    useState(false);
+
+  async function download() {
+    setBusy(true);
+
+    try {
+      const response =
+        await api(
+          `/reports?hazard=${hazard}&format=${format}&approvalStatus=APPROVED`
+        );
+
+      const blob =
+        await response.blob();
+
+      const url =
+        URL.createObjectURL(
+          blob
+        );
+
+      const anchor =
+        document.createElement(
+          'a'
+        );
+
+      anchor.href =
+        url;
+
+      anchor.download =
+        `dpdms-report.${format.toLowerCase()}`;
+
+      anchor.click();
+
+      URL.revokeObjectURL(
+        url
+      );
+    } catch (e) {
+      alert(
+        e.message
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <h2>
+        Reports
+      </h2>
+
+      <p>
+        Reports contain approved
+        incidents only and remain
+        subject to backend
+        hazard/ward scope.
+      </p>
+
+      <div className="form-grid">
+        <label>
+          Hazard
+
+          <select
+            value={hazard}
+            onChange={e =>
+              setHazard(
+                e.target.value
+              )
+            }
+          >
+            <option value="ALL">
+              ALL
+            </option>
+
+            {hazards.map(
+              hazardConfig => (
+                <option
+                  key={
+                    hazardConfig[0]
+                  }
+                  value={
+                    hazardConfig[0]
+                  }
+                >
+                  {
+                    hazardConfig[0]
+                  }
+                </option>
+              )
+            )}
+          </select>
+        </label>
+
+        <label>
+          Format
+
+          <select
+            value={format}
+            onChange={e =>
+              setFormat(
+                e.target.value
+              )
+            }
+          >
+            <option value="PDF">
+              PDF
+            </option>
+
+            <option value="DOCX">
+              DOCX
+            </option>
+
+            <option value="XLSX">
+              XLSX
+            </option>
+
+            <option value="CSV">
+              CSV
+            </option>
+          </select>
+        </label>
+      </div>
+
+      <button
+        onClick={
+          download
+        }
+        disabled={
+          busy
+        }
+      >
+        {busy
+          ? 'Generating...'
+          : 'Download report'}
+      </button>
+    </div>
+  );
+}
+
+/* =========================================================
+   MAIN APP
+   ========================================================= */
+
+function App() {
+  const [user, setUser] =
+    useState(() => {
+      try {
+        return JSON.parse(
+          localStorage.getItem(
+            'dpdms_user'
+          ) || 'null'
+        );
+      } catch {
+        return null;
+      }
+    });
+
+  const [tab, setTab] =
+    useState(
+      'dashboard'
+    );
+
+  const [summary, setSummary] =
+    useState(null);
+
+  const [error, setError] =
+    useState('');
+
+  async function loadSummary() {
+    try {
+      setError('');
+
+      const response =
+        await api(
+          '/dashboard/summary'
+        );
+
+      setSummary(
+        await response.json()
+      );
+    } catch (e) {
+      setError(
+        e.message
+      );
+    }
+  }
+
+  useEffect(() => {
+    if (user) {
+      loadSummary();
+    }
+  }, [user]);
+
+  if (!user) {
+    return (
+      <Login
+        onLoggedIn={
+          setUser
+        }
+      />
+    );
+  }
+
+  function logout() {
+    localStorage.clear();
+
+    setUser(null);
+
+    setSummary(null);
+  }
+
+  return (
+    <div className="app">
+      <header>
+        <div>
+          <strong>
+            DPDMS
+          </strong>
+
+          <span>
+            {user.role} ·{' '}
+            {user.hazard}{' '}
+            {user.ward &&
+              `· ${user.ward}`}
+          </span>
+        </div>
+
+        <button
+          className="ghost"
+          onClick={
+            logout
+          }
+        >
+          Sign out
+        </button>
+      </header>
+
+      <nav>
+        {[
+          [
+            'dashboard',
+            'Dashboard'
+          ],
+          [
+            'incidents',
+            'Incidents'
+          ],
+          [
+            'capture',
+            'Capture'
+          ],
+          [
+            'reports',
+            'Reports'
+          ]
+        ].map(
+          item => (
+            <button
+              key={
+                item[0]
+              }
+              className={
+                tab ===
+                item[0]
+                  ? 'active'
+                  : ''
+              }
+              onClick={() =>
+                setTab(
+                  item[0]
+                )
+              }
+            >
+              {item[1]}
+            </button>
+          )
+        )}
+      </nav>
+
+      <main>
+        {error && (
+          <div className="error">
+            {error}
+          </div>
+        )}
+
+        {tab ===
+          'dashboard' && (
+          <Dashboard
+            summary={
+              summary
+            }
+            onRefresh={
+              loadSummary
+            }
+          />
+        )}
+
+        {tab ===
+          'incidents' && (
+          <Incidents
+            user={
+              user
+            }
+          />
+        )}
+
+        {tab ===
+          'capture' && (
+          <Capture
+            user={
+              user
+            }
+          />
+        )}
+
+        {tab ===
+          'reports' && (
+          <Reports
+            user={
+              user
+            }
+          />
+        )}
+      </main>
+    </div>
+  );
 }
 
 export default App;
