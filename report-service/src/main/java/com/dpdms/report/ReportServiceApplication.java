@@ -41,7 +41,7 @@ interface ReportGenerator { byte[] generate(List<Map<String,Object>> rows,Report
         return b.toString().getBytes(StandardCharsets.UTF_8);
     }
     private LinkedHashSet<String> keys(List<Map<String,Object>> rows){LinkedHashSet<String> k=new LinkedHashSet<>(List.of("hazard","id","ward","district","province","occurrenceAt","reporter","severity","status","latitude","longitude"));for(Map<String,Object>m:rows)k.addAll(m.keySet());return k;}
-    private String escape(String x){return """ + x.replace(""","""") + """;}
+    private String escape(String x){String q=String.valueOf((char)34);return q+x.replace(q,q+q)+q;}
     public String contentType(){return "text/csv";}public String extension(){return "csv";}
 }
 @Component class ExcelGenerator implements ReportGenerator {
