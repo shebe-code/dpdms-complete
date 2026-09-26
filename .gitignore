@@ -13,3 +13,5 @@ node_modules/
 dist/
 .env
 *.env
+# DPDMS runtime process tracking
+scripts/dpdms-processes.json
