@@ -1,0 +1,1 @@
+package com.dpdms.dashboard;import org.junit.jupiter.api.Test;import static org.junit.jupiter.api.Assertions.*;class DashboardServiceApplicationTest{@Test void fiveHazardServicesAreExpected(){assertEquals(5,List.of("FLOOD","DROUGHT","FIRE","ZOONOTIC","MINING").size());}}

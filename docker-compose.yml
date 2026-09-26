@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: dpdms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dpdms_auth
+      MYSQL_USER: dpdms
+      MYSQL_PASSWORD: dpdms
+    ports:
+      - "3306:3306"
+    volumes:
+      - dpdms_mysql:/var/lib/mysql
+      - ./database/mysql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+volumes:
+  dpdms_mysql:

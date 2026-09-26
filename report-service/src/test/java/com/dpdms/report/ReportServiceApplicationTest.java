@@ -1,0 +1,1 @@
+package com.dpdms.report;import org.junit.jupiter.api.Test;import static org.junit.jupiter.api.Assertions.*;class ReportServiceApplicationTest{@Test void allFormatsExist(){assertEquals(4,ReportFormat.values().length);assertEquals("DPDMS Approved Incident Report",ReportTemplateRegistry.INSTANCE.title());}}

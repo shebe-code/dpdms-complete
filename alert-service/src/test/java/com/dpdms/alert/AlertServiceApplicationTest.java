@@ -1,0 +1,1 @@
+package com.dpdms.alert;import org.junit.jupiter.api.Test;import static org.junit.jupiter.api.Assertions.*;class AlertServiceApplicationTest{@Test void channelsHaveDifferentIdentities(){assertNotEquals("EMAIL","WHATSAPP");}}

@@ -1,0 +1,11 @@
+spring:
+  application: { name: AUTH-SERVICE }
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:dpdms_auth}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USER:dpdms}
+    password: ${DB_PASSWORD:dpdms}
+  jpa: { hibernate: { ddl-auto: update }, open-in-view: false }
+server: { port: 8081 }
+eureka: { client: { serviceUrl: { defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/} } } }
+management: { endpoints: { web: { exposure: { include: health,info,metrics } } } }
+dpdms: { jwt-secret: ${JWT_SECRET:dpdms-demo-jwt-secret-key-must-be-at-least-32-bytes-long} }
