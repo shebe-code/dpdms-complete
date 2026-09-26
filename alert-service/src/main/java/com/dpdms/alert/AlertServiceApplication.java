@@ -44,7 +44,7 @@ interface AlertChannel { String name(); String send(String recipient,String mess
     private final AlertLogRepository repository;private final AlertChannelFactory factory;private final List<String> defaultEmails,defaultWhatsapp;
     AlertDispatcher(AlertLogRepository repository,AlertChannelFactory factory,@Value("${dpdms.default-email-recipients:demo@example.com}")String emails,@Value("${dpdms.default-whatsapp-recipients:+263700000000}")String whatsapp){this.repository=repository;this.factory=factory;this.defaultEmails=split(emails);this.defaultWhatsapp=split(whatsapp);}
     private List<String> split(String s){return Arrays.stream(s.split(",")).map(String::trim).filter(x->!x.isBlank()).toList();}
-    @Async public void dispatch(AlertRequest request){for(String r=request.emailRecipients==null||request.emailRecipients.isEmpty()?defaultEmails:request.emailRecipients)send(request,"EMAIL",r);for(String r=request.whatsappRecipients==null||request.whatsappRecipients.isEmpty()?defaultWhatsapp:request.whatsappRecipients)send(request,"WHATSAPP",r);}
+    @Async public void dispatch(AlertRequest request){for(String r:(request.emailRecipients==null||request.emailRecipients.isEmpty()?defaultEmails:request.emailRecipients))send(request,"EMAIL",r);for(String r:(request.whatsappRecipients==null||request.whatsappRecipients.isEmpty()?defaultWhatsapp:request.whatsappRecipients))send(request,"WHATSAPP",r);}
     private void send(AlertRequest request,String channel,String recipient){String status=factory.get(channel).send(recipient,request.message);repository.save(new AlertLog(request.incidentId,request.hazard,channel,recipient,status,request.message));}
 }
 @RestController @RequestMapping("/api/v1/alerts") class AlertController {
