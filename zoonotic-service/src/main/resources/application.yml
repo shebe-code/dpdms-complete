@@ -1,16 +1,28 @@
 spring:
-  application: { name: ZOONOTIC-SERVICE }
+  application:
+    name: ZOONOTIC-SERVICE
   datasource:
-    url: jdbc:mysql://$${DB_HOST:localhost}:$${DB_PORT:3306}/dpdms_zoonotic?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: $${DB_USER:dpdms}
-    password: $${DB_PASSWORD:dpdms}
+    url: "jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/dpdms_zoonotic?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+    username: "${DB_USER:dpdms}"
+    password: "${DB_PASSWORD:dpdms}"
   jpa:
-    hibernate: { ddl-auto: update }
+    hibernate:
+      ddl-auto: update
     open-in-view: false
-server: { port: 8085 }
+
+server:
+  port: 8085
+
 management:
-  endpoints: { web: { exposure: { include: health,info,metrics } } }
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
 eureka:
-  client: { serviceUrl: { defaultZone: $${EUREKA_URL:http://localhost:8761/eureka/} } }
+  client:
+    serviceUrl:
+      defaultZone: "${EUREKA_URL:http://localhost:8761/eureka/}"
+
 dpdms:
-  gateway-secret: $${GATEWAY_SECRET:dpdms-gateway-dev-secret-please-change}
+  gateway-secret: "${GATEWAY_SECRET:dpdms-gateway-dev-secret-please-change}"
