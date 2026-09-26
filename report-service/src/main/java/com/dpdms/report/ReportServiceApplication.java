@@ -41,7 +41,7 @@ interface ReportGenerator { byte[] generate(List<Map<String,Object>> rows,Report
         return b.toString().getBytes(StandardCharsets.UTF_8);
     }
     private LinkedHashSet<String> keys(List<Map<String,Object>> rows){LinkedHashSet<String> k=new LinkedHashSet<>(List.of("hazard","id","ward","district","province","occurrenceAt","reporter","severity","status","latitude","longitude"));for(Map<String,Object>m:rows)k.addAll(m.keySet());return k;}
-    private String escape(String x){return """+x.replace(""","""")+""";}
+    private String escape(String x){return """ + x.replace(""","""") + """;}
     public String contentType(){return "text/csv";}public String extension(){return "csv";}
 }
 @Component class ExcelGenerator implements ReportGenerator {
@@ -54,7 +54,7 @@ interface ReportGenerator { byte[] generate(List<Map<String,Object>> rows,Report
 }
 @Component class PdfGenerator implements ReportGenerator {
     public byte[] generate(List<Map<String,Object>> rows,ReportRequest request)throws Exception{try(PDDocument doc=new PDDocument();ByteArrayOutputStream out=new ByteArrayOutputStream()){PDPage page=new PDPage();doc.addPage(page);try(PDPageContentStream stream=new PDPageContentStream(doc,page)){String[]cols={"hazard","ward","district","severity","status","reporter"};float y=760;write(stream,40,y,ReportTemplateRegistry.INSTANCE.title(),14,true);y-=24;write(stream,40,y,String.join(" | ",cols),9,true);y-=16;for(Map<String,Object>m:rows.stream().limit(45).toList()){String line=Arrays.stream(cols).map(c->trim(Objects.toString(m.get(c),""),15)).collect(Collectors.joining(" | "));write(stream,40,y,line,8,false);y-=12;if(y<40)break;}}doc.save(out);return out.toByteArray();}}
-    private void write(PDPageContentStream s,float x,float y,String text,float size,boolean bold)throws IOException{s.beginText();s.setFont(new PDType1Font(bold?Standard14Fonts.FontName.HELVETICA_BOLD:Standard14Fonts.FontName.HELVETICA),size);s.setTextMatrix(new Matrix(1,0,0,1,x,y));s.showText(text.replaceAll("[^\x20-\x7E]"," "));s.endText();}
+    private void write(PDPageContentStream s,float x,float y,String text,float size,boolean bold)throws IOException{s.beginText();s.setFont(new PDType1Font(bold?Standard14Fonts.FontName.HELVETICA_BOLD:Standard14Fonts.FontName.HELVETICA),size);s.setTextMatrix(new Matrix(1,0,0,1,x,y));s.showText(text.replaceAll("[^\\x20-\\x7E]"," "));s.endText();}
     private String trim(String s,int n){return s.length()>n?s.substring(0,n):s;}
     public String contentType(){return "application/pdf";}public String extension(){return "pdf";}
 }
