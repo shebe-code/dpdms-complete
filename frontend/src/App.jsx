@@ -648,6 +648,15 @@ function Incidents({ user }) {
   const [error, setError] =
     useState('');
 
+  const [editing, setEditing] =
+    useState(null);
+
+  const [history, setHistory] =
+    useState(null);
+
+  const [historyRows, setHistoryRows] =
+    useState([]);
+
   const config =
     hazards.find(
       hazardConfig =>
@@ -673,6 +682,9 @@ function Incidents({ user }) {
   }
 
   useEffect(() => {
+    setEditing(null);
+    setHistory(null);
+    setHistoryRows([]);
     load();
   }, [hazard]);
 
@@ -683,18 +695,23 @@ function Incidents({ user }) {
     user.role ===
       'PROVINCIAL_ADMIN';
 
-  /* =========================================================
-     APPROVE / REJECT / REQUEST CORRECTIONS
-     =========================================================
+  const isRecorder =
+    user.role ===
+      `${hazard}_RECORDER`;
 
-     All five backend services use:
-
-     POST /{id}/approve
-
-     POST /{id}/reject?reason=...
-
-     POST /{id}/corrections?reason=...
-     */
+  function recorderCanModify(row) {
+    return (
+      isRecorder &&
+      row.reporter ===
+        user.username &&
+      (
+        row.status ===
+          'PENDING' ||
+        row.status ===
+          'CORRECTIONS_REQUESTED'
+      )
+    );
+  }
 
   async function action(id, type) {
     try {
@@ -753,6 +770,135 @@ function Incidents({ user }) {
     }
   }
 
+  async function openHistory(row) {
+    try {
+      const response =
+        await api(
+          `/${config[2]}/${row.id}/audit`
+        );
+
+      const json =
+        await response.json();
+
+      setHistory(row);
+      setHistoryRows(json);
+    } catch (e) {
+      alert(
+        `Could not load history: ${e.message}`
+      );
+    }
+  }
+
+  async function startEdit(row) {
+    try {
+      const response =
+        await api(
+          `/${config[2]}/${row.id}`
+        );
+
+      setEditing(
+        await response.json()
+      );
+    } catch (e) {
+      alert(
+        `Could not load incident: ${e.message}`
+      );
+    }
+  }
+
+  function setEditValue(
+    key,
+    value
+  ) {
+    setEditing(current => ({
+      ...current,
+      [key]: value
+    }));
+  }
+
+  async function saveEdit(e) {
+    e.preventDefault();
+
+    try {
+      const payload = {
+        ...editing,
+
+        confirmedHumanCases:
+          Number(
+            editing.confirmedHumanCases
+          ),
+
+        confirmedAnimalCases:
+          Number(
+            editing.confirmedAnimalCases
+          ),
+
+        latitude:
+          Number(
+            editing.latitude
+          ),
+
+        longitude:
+          Number(
+            editing.longitude
+          )
+      };
+
+      await api(
+        `/${config[2]}/${editing.id}`,
+        {
+          method: 'PUT',
+          body:
+            JSON.stringify(
+              payload
+            )
+        }
+      );
+
+      setEditing(null);
+
+      await load();
+
+      alert(
+        'Incident updated successfully.'
+      );
+    } catch (e) {
+      alert(
+        `Update failed: ${e.message}`
+      );
+    }
+  }
+
+  async function deleteIncident(row) {
+    const confirmed =
+      confirm(
+        `Delete incident ${row.id}? This cannot be undone.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await api(
+        `/${config[2]}/${row.id}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+      await load();
+
+      alert(
+        'Incident deleted successfully.'
+      );
+    } catch (e) {
+      alert(
+        `Delete failed: ${e.message}`
+      );
+    }
+  }
+
   return (
     <div>
       <div className="section-head">
@@ -807,40 +953,19 @@ function Incidents({ user }) {
         <table>
           <thead>
             <tr>
-              <th>
-                ID
-              </th>
-
-              <th>
-                Ward
-              </th>
-
-              <th>
-                Severity
-              </th>
-
-              <th>
-                Status
-              </th>
-
-              <th>
-                Reporter
-              </th>
-
-              <th>
-                Actions
-              </th>
+              <th>ID</th>
+              <th>Ward</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Reporter</th>
+              <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {rows.map(
               row => (
-                <tr
-                  key={
-                    row.id
-                  }
-                >
+                <tr key={row.id}>
                   <td>
                     {row.id}
                   </td>
@@ -862,49 +987,86 @@ function Incidents({ user }) {
                   </td>
 
                   <td>
-                    {canApprove &&
-                    row.status !==
-                      'APPROVED' ? (
-                      <div className="actions">
-                        <button
-                          onClick={() =>
-                            action(
-                              row.id,
-                              'approve'
-                            )
-                          }
-                        >
-                          Approve
-                        </button>
+                    <div className="actions">
+                      {canApprove &&
+                        (
+                          row.status ===
+                            'PENDING' ||
+                          row.status ===
+                            'CORRECTIONS_REQUESTED'
+                        ) && (
+                          <>
+                            <button
+                              onClick={() =>
+                                action(
+                                  row.id,
+                                  'approve'
+                                )
+                              }
+                            >
+                              Approve
+                            </button>
 
-                        <button
-                          onClick={() =>
-                            action(
-                              row.id,
-                              'reject'
-                            )
-                          }
-                        >
-                          Reject
-                        </button>
+                            <button
+                              onClick={() =>
+                                action(
+                                  row.id,
+                                  'reject'
+                                )
+                              }
+                            >
+                              Reject
+                            </button>
 
-                        <button
-                          onClick={() =>
-                            action(
-                              row.id,
-                              'corrections'
-                            )
-                          }
-                        >
-                          Corrections
-                        </button>
-                      </div>
-                    ) : user.role ===
-                      'NATIONAL_USER' ? (
-                      'Read only'
-                    ) : (
-                      '—'
-                    )}
+                            <button
+                              onClick={() =>
+                                action(
+                                  row.id,
+                                  'corrections'
+                                )
+                              }
+                            >
+                              Corrections
+                            </button>
+                          </>
+                        )}
+
+                      {recorderCanModify(
+                        row
+                      ) && (
+                        <>
+                          <button
+                            onClick={() =>
+                              startEdit(
+                                row
+                              )
+                            }
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              deleteIncident(
+                                row
+                              )
+                            }
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+
+                      <button
+                        onClick={() =>
+                          openHistory(
+                            row
+                          )
+                        }
+                      >
+                        History
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -912,9 +1074,355 @@ function Incidents({ user }) {
           </tbody>
         </table>
       </div>
+
+      {editing &&
+        hazard ===
+          'ZOONOTIC' && (
+        <div className="panel">
+          <div className="section-head">
+            <div>
+              <h3>
+                Edit Zoonotic Incident #{editing.id}
+              </h3>
+
+              <p>
+                Only pending or
+                correction-requested incidents
+                can be edited.
+              </p>
+            </div>
+
+            <button
+              className="ghost"
+              onClick={() =>
+                setEditing(null)
+              }
+            >
+              Cancel
+            </button>
+          </div>
+
+          <form
+            onSubmit={
+              saveEdit
+            }
+          >
+            <div className="form-grid">
+              <label>
+                Occurrence date/time
+                <input
+                  type="datetime-local"
+                  value={
+                    editing.occurrenceAt
+                      ? editing.occurrenceAt.slice(
+                          0,
+                          16
+                        )
+                      : ''
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'occurrenceAt',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Severity
+                <select
+                  value={
+                    editing.severity
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'severity',
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="LOW">
+                    LOW
+                  </option>
+                  <option value="MEDIUM">
+                    MEDIUM
+                  </option>
+                  <option value="HIGH">
+                    HIGH
+                  </option>
+                  <option value="CRITICAL">
+                    CRITICAL
+                  </option>
+                </select>
+              </label>
+
+              <label>
+                Latitude
+                <input
+                  type="number"
+                  step="any"
+                  min="-90"
+                  max="90"
+                  value={
+                    editing.latitude ?? ''
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'latitude',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Longitude
+                <input
+                  type="number"
+                  step="any"
+                  min="-180"
+                  max="180"
+                  value={
+                    editing.longitude ?? ''
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'longitude',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Pathogen/disease
+                <input
+                  value={
+                    editing.pathogenName ??
+                    ''
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'pathogenName',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Animal species
+                <input
+                  value={
+                    editing.animalSpecies ??
+                    ''
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'animalSpecies',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Confirmed human cases
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={
+                    editing.confirmedHumanCases ??
+                    0
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'confirmedHumanCases',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Confirmed animal cases
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={
+                    editing.confirmedAnimalCases ??
+                    0
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'confirmedAnimalCases',
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                Classification
+                <select
+                  value={
+                    editing.eventClassification ??
+                    ''
+                  }
+                  required
+                  onChange={e =>
+                    setEditValue(
+                      'eventClassification',
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="">
+                    Select classification
+                  </option>
+                  <option value="CLUSTER">
+                    CLUSTER
+                  </option>
+                  <option value="OUTBREAK">
+                    OUTBREAK
+                  </option>
+                </select>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+            >
+              Save changes
+            </button>
+          </form>
+        </div>
+      )}
+
+      {history && (
+        <div className="panel">
+          <div className="section-head">
+            <div>
+              <h3>
+                Incident #{history.id} History
+              </h3>
+
+              <p>
+                Audit trail recorded by
+                the backend.
+              </p>
+            </div>
+
+            <button
+              className="ghost"
+              onClick={() => {
+                setHistory(null);
+                setHistoryRows([]);
+              }}
+            >
+              Close
+            </button>
+          </div>
+
+          {historyRows.length ===
+          0 ? (
+            <p>
+              No history entries
+              were found.
+            </p>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Actor</th>
+                    <th>Role</th>
+                    <th>Old status</th>
+                    <th>New status</th>
+                    <th>Note</th>
+                    <th>Changed</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {historyRows.map(
+                    (
+                      entry,
+                      index
+                    ) => (
+                      <tr
+                        key={
+                          entry.id ??
+                          index
+                        }
+                      >
+                        <td>
+                          {entry.action}
+                        </td>
+
+                        <td>
+                          {
+                            entry.actorUsername
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            entry.actorRole
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            entry.oldStatus ||
+                            '-'
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            entry.newStatus ||
+                            '-'
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            entry.note ||
+                            '-'
+                          }
+                        </td>
+
+                        <td>
+                          {
+                            entry.changedAt
+                          }
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
 
 /* =========================================================
    CAPTURE
