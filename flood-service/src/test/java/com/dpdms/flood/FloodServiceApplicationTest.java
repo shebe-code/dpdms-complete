@@ -1,3 +1,4 @@
+/*build to go to Eureka*/
 package com.dpdms.flood;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
