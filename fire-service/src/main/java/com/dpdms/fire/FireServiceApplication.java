@@ -68,6 +68,8 @@ abstract class BaseIncident {
 
 @Entity
 @Table(name="fire_incidents")
+/*Fields are private (ward, district, province, etc.). Only accessible via public getters/setters. Subclasses can't touch the raw fields directly*/
+/*HazardIncident is a BaseIncident. It inherits ward, district, province, occurrenceAt, reporter, severity, latitude, longitude plus their getters/setters.*/    
 class HazardIncident extends BaseIncident {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     @NotNull @Enumerated(EnumType.STRING) private IncidentStatus status = IncidentStatus.PENDING;
@@ -111,6 +113,7 @@ class HazardIncident extends BaseIncident {
 
 @Entity
 @Table(name="fire_audit")
+/*All fields private; only getters exposed; constructor is package-private*/
 class AuditEntry {
     @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
     private Long incidentId;
@@ -127,13 +130,14 @@ class AuditEntry {
 
 @Repository interface IncidentRepository extends org.springframework.data.jpa.repository.JpaRepository<HazardIncident,Long>{}
 @Repository interface AuditRepository extends org.springframework.data.jpa.repository.JpaRepository<AuditEntry,Long>{List<AuditEntry> findByIncidentIdOrderByChangedAtAsc(Long incidentId);}
-
+/*This is the strongest example. IncidentService is injected with a HazardRules reference. If you add class FloodRules implements HazardRules, the service code never changes — it just calls rules.triggersAlert(i) and Java dispatches to the right implementation at runtime*/
 interface HazardRules {
     String hazard();
     boolean triggersAlert(HazardIncident incident);
     String alertReason(HazardIncident incident);
 }
 @Component
+    /*hazard rules uses abstraction Declares what a hazard does (hazard(), triggersAlert(), alertReason()) without saying how. The service only knows it has "rules," not fire-specific logic*/
 class FireServiceRules implements HazardRules {
     public String hazard(){return "FIRE";}
     public boolean triggersAlert(HazardIncident i){return Boolean.TRUE.equals(i.getActive())&&((i.getInjuriesFatalities()!=null&&i.getInjuriesFatalities()>0)||(i.getAreaBurnedHectares()!=null&&i.getAreaBurnedHectares()>=10.0));}
@@ -192,6 +196,7 @@ class AlertNotifier {
 
 @Service
 class IncidentService {
+    /*uses abstraction the query implementation is entirely hidden*/
     private final IncidentRepository repository; private final AuditRepository audit; private final HazardRules rules; private final AlertNotifier notifier;
     IncidentService(IncidentRepository repository,AuditRepository audit,HazardRules rules,AlertNotifier notifier){this.repository=repository;this.audit=audit;this.rules=rules;this.notifier=notifier;}
 
