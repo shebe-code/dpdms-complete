@@ -1,3 +1,4 @@
+/*creating package for fire*/
 package com.dpdms.fire;
 
 import jakarta.persistence.*;
