@@ -1,3 +1,4 @@
+/*The Mining infrastructure*/
 spring:
   application:
     name: MINING-SERVICE
