@@ -2207,6 +2207,105 @@ function Reports({ user }) {
 }
 
 /* =========================================================
+   ALERTS
+   ========================================================= */
+
+/**
+ * Displays the alert log for national and provincial users only.
+ * The backend enforces the same rule in GET /api/v1/alerts/logs.
+ *
+ * @param props.user the authenticated user object
+ * @returns the alerts table or an access-denied message
+ */
+function Alerts({ user }) {
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const canView =
+    user.role === 'NATIONAL_USER' ||
+    user.role === 'PROVINCIAL_ADMIN';
+
+  async function load() {
+    setBusy(true);
+    setError('');
+
+    try {
+      const response = await api('/alerts/logs');
+      setRows(await response.json());
+    } catch (e) {
+      setRows([]);
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (canView) {
+      load();
+    }
+  }, [canView]);
+
+  if (!canView) {
+    return (
+      <div className="panel">
+        <h2>Alerts</h2>
+        <p>Only national and provincial users may view alert logs.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="section-head">
+        <div>
+          <h2>Alerts</h2>
+          <p>Every alert dispatched by the alert-service, newest first.</p>
+        </div>
+
+        <button onClick={load} disabled={busy}>
+          {busy ? 'Loading...' : 'Refresh'}
+        </button>
+      </div>
+
+      {error && <div className="error">{error}</div>}
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Incident</th>
+              <th>Hazard</th>
+              <th>Channel</th>
+              <th>Recipient</th>
+              <th>Status</th>
+              <th>Message</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.id}>
+                <td>{row.id}</td>
+                <td>{row.incidentId}</td>
+                <td>{row.hazard}</td>
+                <td>{row.channel}</td>
+                <td>{row.recipient}</td>
+                <td>{row.deliveryStatus}</td>
+                <td>{row.message}</td>
+                <td>{row.timestamp}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
    MAIN APP
    ========================================================= */
 
@@ -2321,6 +2420,10 @@ function App() {
           [
             'reports',
             'Reports'
+          ],
+          [
+            'alerts', 
+            'Alerts'
           ]
         ].map(
           item => (
@@ -2386,6 +2489,15 @@ function App() {
         {tab ===
           'reports' && (
           <Reports
+            user={
+              user
+            }
+          />
+        )}
+
+        {tab ===
+          'alerts' && (
+          <Alerts
             user={
               user
             }
