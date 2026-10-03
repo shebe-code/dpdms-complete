@@ -31,6 +31,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+/**
+ * Provides CRUD and approval operations on fire incidents.
+ */
 
 @SpringBootApplication
 public class DashboardServiceApplication {

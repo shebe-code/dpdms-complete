@@ -1,10 +1,13 @@
+# The Mining infrastructure
 spring:
   application:
     name: MINING-SERVICE
+
   datasource:
     url: "jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/dpdms_mining?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
     username: "${DB_USER:dpdms}"
     password: "${DB_PASSWORD:dpdms}"
+
   jpa:
     hibernate:
       ddl-auto: update

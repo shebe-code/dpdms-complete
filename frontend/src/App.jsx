@@ -2206,148 +2206,108 @@ function Reports({ user }) {
   );
 }
 
-
-
 /* =========================================================
    ALERTS
    ========================================================= */
 
-function Alerts() {
-  const [rows, setRows] =
-    useState([]);
+/**
+ * Displays the alert log for national and provincial users only.
+ * The backend enforces the same rule in GET /api/v1/alerts/logs.
+ *
+ * @param props.user the authenticated user object
+ * @returns the alerts table or an access-denied message
+ */
+function Alerts({ user }) {
+  const [rows, setRows] = useState([]);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const [loading, setLoading] =
-    useState(true);
+  const canView =
+    user.role === 'NATIONAL_USER' ||
+    user.role === 'PROVINCIAL_ADMIN';
 
-  const [error, setError] =
-    useState('');
-
-  async function loadAlerts() {
-    setLoading(true);
+  async function load() {
+    setBusy(true);
     setError('');
 
     try {
-      const response =
-        await api(
-          '/alerts/logs'
-        );
-
-      setRows(
-        await response.json()
-      );
+      const response = await api('/alerts/logs');
+      setRows(await response.json());
     } catch (e) {
       setRows([]);
       setError(e.message);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
   useEffect(() => {
-    loadAlerts();
-  }, []);
+    if (canView) {
+      load();
+    }
+  }, [canView]);
+
+  if (!canView) {
+    return (
+      <div className="panel">
+        <h2>Alerts</h2>
+        <p>Only national and provincial users may view alert logs.</p>
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="section-head">
         <div>
-          <h2>
-            Disaster Alerts
-          </h2>
-
-          <p>
-            Email and WhatsApp alert
-            delivery history.
-          </p>
+          <h2>Alerts</h2>
+          <p>Every alert dispatched by the alert-service, newest first.</p>
         </div>
 
-        <button
-          onClick={loadAlerts}
-          disabled={loading}
-        >
-          {loading
-            ? 'Loading...'
-            : 'Refresh'}
+        <button onClick={load} disabled={busy}>
+          {busy ? 'Loading...' : 'Refresh'}
         </button>
       </div>
 
-      {error && (
-        <div className="error">
-          {error}
-        </div>
-      )}
+      {error && <div className="error">{error}</div>}
 
-      {!loading &&
-        !error &&
-        rows.length === 0 && (
-          <div className="panel">
-            No alerts have been
-            generated yet.
-          </div>
-        )}
-
-      {rows.length > 0 && (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Hazard</th>
-                <th>Incident</th>
-                <th>Channel</th>
-                <th>Recipient</th>
-                <th>Status</th>
-                <th>Message</th>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Incident</th>
+              <th>Hazard</th>
+              <th>Channel</th>
+              <th>Recipient</th>
+              <th>Status</th>
+              <th>Message</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.id}>
+                <td>{row.id}</td>
+                <td>{row.incidentId}</td>
+                <td>{row.hazard}</td>
+                <td>{row.channel}</td>
+                <td>{row.recipient}</td>
+                <td>{row.deliveryStatus}</td>
+                <td>{row.message}</td>
+                <td>{row.timestamp}</td>
               </tr>
-            </thead>
-
-            <tbody>
-              {rows.map(
-                row => (
-                  <tr key={row.id}>
-                    <td>
-                      {row.timestamp}
-                    </td>
-
-                    <td>
-                      {row.hazard}
-                    </td>
-
-                    <td>
-                      {row.incidentId}
-                    </td>
-
-                    <td>
-                      {row.channel}
-                    </td>
-
-                    <td>
-                      {row.recipient}
-                    </td>
-
-                    <td>
-                      {row.deliveryStatus}
-                    </td>
-
-                    <td>
-                      {row.message}
-                    </td>
-                  </tr>
-                )
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
+
 /* =========================================================
    MAIN APP
    ========================================================= */
-
-
-
 
 function App() {
   const [user, setUser] =
@@ -2454,24 +2414,17 @@ function App() {
             'Incidents'
           ],
           [
-  'capture',
-  'Capture'
-],
-[
-  'reports',
-  'Reports'
-],
-...(
-  user.role === 'NATIONAL_USER' ||
-  user.role === 'PROVINCIAL_ADMIN'
-    ? [
-        [
-          'alerts',
-          'Alerts'
-        ]
-      ]
-    : []
-)
+            'capture',
+            'Capture'
+          ],
+          [
+            'reports',
+            'Reports'
+          ],
+          [
+            'alerts', 
+            'Alerts'
+          ]
         ].map(
           item => (
             <button
@@ -2533,19 +2486,23 @@ function App() {
           />
         )}
 
-       {tab ===
-  'reports' && (
-  <Reports
-    user={
-      user
-    }
-  />
-)}
+        {tab ===
+          'reports' && (
+          <Reports
+            user={
+              user
+            }
+          />
+        )}
 
-{tab ===
-  'alerts' && (
-  <Alerts />
-)}
+        {tab ===
+          'alerts' && (
+          <Alerts
+            user={
+              user
+            }
+          />
+        )}
       </main>
     </div>
   );
