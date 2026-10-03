@@ -2206,9 +2206,148 @@ function Reports({ user }) {
   );
 }
 
+
+
+/* =========================================================
+   ALERTS
+   ========================================================= */
+
+function Alerts() {
+  const [rows, setRows] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState('');
+
+  async function loadAlerts() {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response =
+        await api(
+          '/alerts/logs'
+        );
+
+      setRows(
+        await response.json()
+      );
+    } catch (e) {
+      setRows([]);
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAlerts();
+  }, []);
+
+  return (
+    <div>
+      <div className="section-head">
+        <div>
+          <h2>
+            Disaster Alerts
+          </h2>
+
+          <p>
+            Email and WhatsApp alert
+            delivery history.
+          </p>
+        </div>
+
+        <button
+          onClick={loadAlerts}
+          disabled={loading}
+        >
+          {loading
+            ? 'Loading...'
+            : 'Refresh'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="error">
+          {error}
+        </div>
+      )}
+
+      {!loading &&
+        !error &&
+        rows.length === 0 && (
+          <div className="panel">
+            No alerts have been
+            generated yet.
+          </div>
+        )}
+
+      {rows.length > 0 && (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Hazard</th>
+                <th>Incident</th>
+                <th>Channel</th>
+                <th>Recipient</th>
+                <th>Status</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {rows.map(
+                row => (
+                  <tr key={row.id}>
+                    <td>
+                      {row.timestamp}
+                    </td>
+
+                    <td>
+                      {row.hazard}
+                    </td>
+
+                    <td>
+                      {row.incidentId}
+                    </td>
+
+                    <td>
+                      {row.channel}
+                    </td>
+
+                    <td>
+                      {row.recipient}
+                    </td>
+
+                    <td>
+                      {row.deliveryStatus}
+                    </td>
+
+                    <td>
+                      {row.message}
+                    </td>
+                  </tr>
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 /* =========================================================
    MAIN APP
    ========================================================= */
+
+
+
 
 function App() {
   const [user, setUser] =
@@ -2315,13 +2454,24 @@ function App() {
             'Incidents'
           ],
           [
-            'capture',
-            'Capture'
-          ],
-          [
-            'reports',
-            'Reports'
-          ]
+  'capture',
+  'Capture'
+],
+[
+  'reports',
+  'Reports'
+],
+...(
+  user.role === 'NATIONAL_USER' ||
+  user.role === 'PROVINCIAL_ADMIN'
+    ? [
+        [
+          'alerts',
+          'Alerts'
+        ]
+      ]
+    : []
+)
         ].map(
           item => (
             <button
@@ -2383,14 +2533,19 @@ function App() {
           />
         )}
 
-        {tab ===
-          'reports' && (
-          <Reports
-            user={
-              user
-            }
-          />
-        )}
+       {tab ===
+  'reports' && (
+  <Reports
+    user={
+      user
+    }
+  />
+)}
+
+{tab ===
+  'alerts' && (
+  <Alerts />
+)}
       </main>
     </div>
   );

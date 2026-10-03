@@ -1,18 +1,44 @@
 spring:
-  application: { name: ALERT-SERVICE }
+  application:
+    name: ALERT-SERVICE
+
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:dpdms_alerts}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${DB_USER:dpdms}
     password: ${DB_PASSWORD:dpdms}
-  jpa: { hibernate: { ddl-auto: update }, open-in-view: false }
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
   mail:
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:25}
     username: ${SMTP_USERNAME:}
     password: ${SMTP_PASSWORD:}
-server: { port: 8090 }
-eureka: { client: { serviceUrl: { defaultZone: "${EUREKA_URL:http://localhost:8761/eureka/}" } } }
-management: { endpoints: { web: { exposure: { include: health,info,metrics } } } }
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+server:
+  port: 8090
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: "${EUREKA_URL:http://localhost:8761/eureka/}"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
 dpdms:
   gateway-secret: ${GATEWAY_SECRET:dpdms-gateway-dev-secret-please-change}
   alert-email-from: ${ALERT_EMAIL_FROM:dpdms@example.com}
